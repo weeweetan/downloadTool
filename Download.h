@@ -6,14 +6,15 @@
 #define DOWNLOADTOOL_DOWNLOAD_H
 
 #include<curl/curl.h>
+#include <cstdio>
 #include <string>
 #include <mutex>
 using namespace std;
 typedef struct ThreadData {
     CURL *curlHandle;
     FILE *fileHandle;
-    long long startPos;
-    long long endPos;
+    long long startPos; // Next byte to write; endPos + 1 after completion.
+    long long endPos;   // Inclusive end of this thread's assigned range.
 } ThreadData;
 
 class Download {
@@ -36,7 +37,7 @@ public:
      * @param size  数据块大小
      * @param nmemb 数据量
      * @param threadData ThreadData类型的指针
-     * @return 总共写入数据数量
+     * @return fwrite 实际接受的字节数；拒绝越界块或定位失败时返回 0
      */
     static size_t writeData(void *ptr, size_t size, size_t nmemb, void *threadData);
 

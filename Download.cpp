@@ -2,6 +2,8 @@
 // Created by tanwei on 19-2-23.
 //
 #include <iostream>
+#include <climits>
+#include <limits>
 #include "Download.h"
 static mutex writeMutex;
 Download::Download() {
@@ -13,7 +15,7 @@ Download::~Download() {
     curl_easy_cleanup(curlHandle);
 }
 
-bool Download::multiThreadDownload() {}
+bool Download::multiThreadDownload() { return false; }
 
 long long Download::getFileSize() {
     double FileLength = 0;
@@ -34,22 +36,24 @@ long long Download::getFileSize() {
 
 size_t Download::writeData(void *ptr, size_t size, size_t count, void *threadData)
 {
-    auto *data = (ThreadData *) threadData;
-    size_t written = 0;
-    writeMutex.lock();
-    if (data->startPos + size * count <= data->endPos)
-    {
-        fseek (data->fileHandle, data->startPos, SEEK_SET);
-        written = fwrite (ptr, size, count, data->fileHandle);
-        data->startPos += size * count;
-    }
-    else
-    {
-        fseek (data->fileHandle, data->startPos, SEEK_SET);
-        written = fwrite (ptr, 1, data->endPos - data->startPos + 1, data->fileHandle);
-        data->startPos = data->endPos;
-    }
-    writeMutex.unlock();
+    if (size == 0 || count == 0) return 0;
+    if (ptr == nullptr || threadData == nullptr ||
+        count > numeric_limits<size_t>::max() / size) return 0;
+    const size_t bytes = size * count;
+    auto *data = static_cast<ThreadData *>(threadData);
+    lock_guard<mutex> guard(writeMutex);
+    if (data->fileHandle == nullptr || data->startPos < 0 ||
+        data->endPos < data->startPos || data->startPos > LONG_MAX) return 0;
+
+    const unsigned long long remaining =
+        static_cast<unsigned long long>(data->endPos - data->startPos) + 1ULL;
+    if (bytes > remaining ||
+        bytes > static_cast<unsigned long long>(LLONG_MAX - data->startPos)) return 0;
+    if (fseek(data->fileHandle, static_cast<long>(data->startPos), SEEK_SET) != 0)
+        return 0;
+    // fwrite with a one-byte element size reports bytes, including short writes.
+    const size_t written = fwrite(ptr, 1, bytes, data->fileHandle);
+    data->startPos += static_cast<long long>(written);
     return written;
 }
 
