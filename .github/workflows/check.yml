@@ -1,0 +1,51 @@
+name: Write callback checks
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            cc: gcc
+            cxx: g++
+            sanitizers: 'OFF'
+            leaks: '1'
+          - os: ubuntu-24.04
+            cc: clang
+            cxx: clang++
+            sanitizers: 'ON'
+            leaks: '1'
+          - os: macos-15
+            cc: clang
+            cxx: clang++
+            sanitizers: 'ON'
+            leaks: '0'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      CC: ${{ matrix.cc }}
+      CXX: ${{ matrix.cxx }}
+      ASAN_OPTIONS: detect_leaks=${{ matrix.leaks }}
+      UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Install libcurl development files
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libcurl4-openssl-dev
+      - name: Configure
+        run: cmake -S . -B build-ci -DCMAKE_BUILD_TYPE=Debug -DENABLE_SANITIZERS=${{ matrix.sanitizers }}
+      - name: Build
+        run: cmake --build build-ci --parallel 2
+      - name: Check writes using local files
+        run: ctest --test-dir build-ci --output-on-failure --parallel 2
