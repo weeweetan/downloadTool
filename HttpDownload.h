@@ -26,19 +26,19 @@ public:
      * @param ptr 包含http头的指针
      * @param size 单位数据块大小
      * @param nmemb 数据块数量
-     * @param stream 待填充文件名的指针
-     * @return 写入的数据量
+     * @param stream 待填充文件名的 std::string 指针
+     * @return 已处理的头部字节数；无效回调参数返回 0
      */
     static size_t parseHeader(void *ptr, size_t size, size_t nmemb, void *stream);
 
     /**
      * @function getNameFromTag
      * @description 从Content-Disposition字段中获取文件名
-     * @param cd Content-Disposition字段
-     * @param name 待填充文件名的指针
-     * @return 是否成功
+     * @param cd Content-Disposition 字段值（不含字段名）
+     * @param name 成功时填充的文件名
+     * @return 是否找到安全且非空的 filename 参数
      */
-    static size_t getNameFromTag(const char * cd, char *name);
+    static bool getNameFromTag(const std::string &cd, std::string &name);
 
     /**
      * @function getNameFromUrl
