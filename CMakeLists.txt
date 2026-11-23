@@ -32,4 +32,12 @@ if(BUILD_TESTING)
         set_tests_properties(write-${case} PROPERTIES TIMEOUT 15
             FAIL_REGULAR_EXPRESSION "AddressSanitizer;UndefinedBehaviorSanitizer;runtime error:;LeakSanitizer")
     endforeach()
+
+    add_executable(test-header tests/test_header.cpp HttpDownload.cpp)
+    target_link_libraries(test-header PRIVATE download_base)
+    foreach(case valid invalid)
+        add_test(NAME header-${case} COMMAND test-header ${case})
+        set_tests_properties(header-${case} PROPERTIES TIMEOUT 15
+            FAIL_REGULAR_EXPRESSION "AddressSanitizer;UndefinedBehaviorSanitizer;runtime error:;LeakSanitizer")
+    endforeach()
 endif()

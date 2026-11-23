@@ -24,6 +24,12 @@ cmake --build build-local --parallel 2
 
 CTest 的 8 组用例使用临时文件和本地管道，验证字节计数、单字节边界、完成后重复调用、越界块、无效输入、定位和写入错误，以及并发写入。完整 HTTP 下载流程需要另行集成验证。
 
+## 响应头文件名
+
+`HttpDownload::parseHeader` 只读取 libcurl 本次回调给出的 `size * nmemb` 字节，不要求响应头以零字节结尾。它识别大小写不敏感的 `Content-Disposition` 字段名及 `filename` 参数，支持普通值和带引号的值；成功时写入 `std::string`。空文件名、控制字符及含 `/` 或 `\` 的路径会被拒绝；如果始终没有有效头部文件名，现有 URL 文件名逻辑会回退。其他头部保持文件名不变。该练习尚未解析 `filename*` 扩展参数。
+
+CTest 另有 2 组离线响应头回归，覆盖无结尾零字节的原始缓冲区、大小写、引号、参数缺失与无效路径。回调规则见 [libcurl 头部回调文档](https://curl.se/libcurl/c/CURLOPT_HEADERFUNCTION.html)。
+
 ## 内存与未定义行为检查
 
 ```sh
